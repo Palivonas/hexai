@@ -1,10 +1,11 @@
-const dimensions = {
-    width: 700,
-    height: 600
+const gameConfig = {
+    mapRadius: 10,
+    hexRadius: 16,
+    spacing: 4,
+    turnTime: 100,
+    canvas: document.getElementById('canvas'),
+    Two: Two,
+    hexLib: hexagonLib
 };
-
-const canvas = document.getElementById('canvas');
-const two = new Two(dimensions).appendTo(canvas);
-const game = new Game(two);
-
+const game = new Game(gameConfig);
 game.start();

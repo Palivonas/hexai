@@ -1,113 +1,123 @@
 class Game {
-    constructor (twoInstance) {
-        this.turnTime = 100;
-        this.starParameters = [18.2, 21, 6];
-        this.starRotation = 17;
-        this.hexWidth = 40;
+    constructor(config) {
+        this.mapRadius = config.mapRadius;
+        this.hexRadius = config.hexRadius;
+        this.hexWidth = Math.sqrt(3) * this.hexRadius + config.spacing;
+        this.hexHeight = config.hexRadius * 1.47 + config.spacing;
+        this.turnTime = config.turnTime;
+        this.canvas = config.canvas;
+        this.Two = config.Two;
+        this.hexLib = config.hexLib;
 
-        this.edgeLength = 5;
+        this.canvasSize = this.hexWidth * (this.mapRadius * 2 + 1);
 
-        this.two = twoInstance;
-        this.cells = [];
+        this.two = new this.Two({
+            width: this.canvasSize,
+            height: this.canvasSize
+        }).appendTo(canvas);
+    }
 
+    makeHex(x, y) {
+        const hex = new this.Two.Polygon(x, y, this.hexRadius, 6);
+        hex.rotation = Math.PI / 6;
+        return hex;
+    }
 
-        // const rows = this.edgeLength * 2 - 1;
-        // for (let y = 0; y < rows; ++y) {
-        //     let cellsInRow = this.edgeLength + (this.edgeLength / 2 - Math.abs(y - this.edgeLength / 2));
-        //     if (y > this.edgeLength / 2) {
-        //         cellsInRow += 2;
-        //     }
-
-        //     const offsetX = Math.floor((rows - cellsInRow) / 2);
-        //     for (let x = 0; x < cellsInRow; ++x) {
-        //         this.cells.push(this.makeHex(x + offsetX, y));
-        //         this.draw();
-        //     }
-        //     this.bbd;
-        // }
-
-        const qOffsets = {};
-        qOffsets[-3] = 1;
-        qOffsets[-2] = 1;
-        qOffsets[-1] = 2;
-        qOffsets[0] = 2;
-        qOffsets[1] = 3;
-        qOffsets[2] = 3;
-        qOffsets[3] = 4;
-        qOffsets[4] = 4;
-        qOffsets[5] = 5;
-
-        this.hexes = [];
-        this.hexGroup = new Two.Group();
-        this.textGroup = new Two.Group();
-        var n_hex = null; 
-        var row = 0, col = 0;
-        for (var q = -this.edgeLength; q <= this.edgeLength; q++) {
-            var r1 = Math.max(-this.edgeLength, -q - this.edgeLength);
-            var r2 = Math.min(this.edgeLength, -q + this.edgeLength);
-            col = q + this.edgeLength;
-            this.hexes[ col ] = [];
-
-
-            for (var r = r1; r <= r2; r++) {
-                row = r - r1;
-                // temp_q = q + (r + this.edgeLength);
-                let offset = 0;
-                if (qOffsets.hasOwnProperty(r)) {
-                    offset = qOffsets[r];
-                }
-                this.cells.push(this.makeHex(q + offset, r));
-                this.hexes[ col ][ row ] = [[q, r], [col, row]];
+    initMapData() {
+        this.cellsMap = new Map();
+        this.cellsList = [];
+        for (let q = -this.mapRadius; q <= this.mapRadius; q++) {
+            const r1 = Math.max(-this.mapRadius, -q - this.mapRadius);
+            const r2 = Math.min(this.mapRadius, -q + this.mapRadius);
+            const rMap = new Map();
+            this.cellsMap.set(q, rMap);
+            for (let r = r1; r <= r2; r++) {
+                const location = this.hexLib.Hex(q, r, -q-r);
+                const cell = new Cell(location);
+                rMap.set(r, cell);
+                this.cellsList.push(cell);
             }
         }
-        this.hexGroup.add(this.cells);
-        this.hexGroup.translation.set(250, 210);
-        this.textGroup.translation.set(250, 210);
-        two.add(this.hexGroup);
-        two.add(this.textGroup);
-    }
-
-    makeHex (q, r) {
-        const width = this.hexWidth;
-        let x = q;
-        let y = r;
-        if (y % 2 == 0) {
-            x += 0.5;
+        for (const cell of this.cellsList) {
+            const neighbors = [];
+            for (let direction = 0; direction < 6; ++direction) {
+                const location = this.hexLib.hex_neighbor(cell.location, direction);
+                if (this.cellsMap.has(location.q) && this.cellsMap.get(location.q).has(location.r)) {
+                    neighbors.push(this.cellsMap.get(location.q).get(location.r));
+                }
+            }
+            cell.setNeighbors(neighbors);
         }
-        x = x * width;
-        y = y * width * 0.87;
-        const star = this.two.makeStar(x, y, ...this.starParameters);
-        star.rotation = this.starRotation;
-
-        const text = new Two.Text(q + ", " + r, x, y);
-        this.two.add(text);
-        this.textGroup.add(text);
-        return star;
     }
 
-    start () {
+    initMapShapes () {
+        this.shapes = [];
+        this.hexGroup = new this.Two.Group();
+        for (const cell of this.cellsList) {
+            const hex = cell.location;
+            const x = this.hexWidth * (hex.q + hex.r/2);
+            const y = this.hexHeight * hex.r;
+            const shape =  this.makeHex(x, y);
+            cell.setHex(shape);
+            this.hexGroup.add(shape);
+        }
+        this.two.add(this.hexGroup);
+        const drawingOffset = this.canvasSize / 2;
+        this.hexGroup.translation.set(drawingOffset, drawingOffset);
+    }
+
+    start() {
+        this.initMapData();
+        this.initMapShapes();
         this.running = true;
         this.gameLoop();
     }
 
-    stop () {
+    stop() {
         this.running = false;
     }
 
-    gameLoop () {
+    gameLoop() {
         if (!this.running)
             return;
         this.update();
         this.draw();
-        setTimeout("game.gameLoop()", this.turnTime); //TODO fix this hardcoded crap
+        setTimeout(this.gameLoop.bind(this), this.turnTime);
     }
 
-    update () {
-        if (this.customUpdate)
-            this.customUpdate(this.two, this);
+    update() {
+        
     }
 
-    draw () {
+    draw() {
+
         this.two.update();
+    }
+}
+
+class Cell {
+    constructor(location) {
+        this.location = location;
+        this.hex = null;
+    }
+
+    setHex (hex) {
+        this.hex = hex;
+    }
+
+    setNeighbors (neighbors) {
+        this.neighbors = neighbors;
+    }
+
+    setOwner (owner) {
+        this.owner = owner;
+    }
+
+    getColor() {
+        if (this.owner)
+            return this.owner.color;
+        if (this.color)
+            return this.color;
+        return "gray";
     }
 }
