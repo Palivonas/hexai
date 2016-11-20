@@ -1,5 +1,5 @@
 const gameConfig = {
-    mapRadius: 10,
+    mapRadius: 15,
     hexRadius: 16,
     spacing: 4,
     turnTime: 100,

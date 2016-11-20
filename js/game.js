@@ -43,7 +43,7 @@ class Game {
             for (let direction = 0; direction < 6; ++direction) {
                 const location = this.hexLib.hex_neighbor(cell.location, direction);
                 if (this.cellsMap.has(location.q) && this.cellsMap.get(location.q).has(location.r)) {
-                    neighbors.push(this.cellsMap.get(location.q).get(location.r));
+                    neighbors.push(this.cellsMap.get(location.q).get(location.r)); // TODO use this.getCell()
                 }
             }
             cell.setNeighbors(neighbors);
@@ -66,15 +66,31 @@ class Game {
         this.hexGroup.translation.set(drawingOffset, drawingOffset);
     }
 
+    getCell (q, r) {
+        if (this.cellsMap.has(q) && this.cellsMap.get(q).has(r)) {
+            return this.cellsMap.get(q).get(r);
+        }
+        return null;
+    }
+
     start() {
         this.initMapData();
         this.initMapShapes();
+        this.initPlayers();
         this.running = true;
         this.gameLoop();
     }
 
     stop() {
         this.running = false;
+    }
+
+    initPlayers () {
+        this.players = [
+            new Player("Centa", "rgb(82, 141, 224)", this.getCell(1, 7)),
+            new Player("TheRauck", "rgb(37, 183, 60)", this.getCell(-10, 1)),
+            new Player("Undertaker", "rgb(193, 52, 52)", this.getCell(8, -13))
+        ];
     }
 
     gameLoop() {
@@ -86,11 +102,15 @@ class Game {
     }
 
     update() {
-        
+        for (const player of this.players) {
+            Bot.makeTurn(player);
+        }
     }
 
     draw() {
-
+        for (const cell of this.cellsList) {
+            cell.hex.fill = cell.getColor();
+        }
         this.two.update();
     }
 }
@@ -118,6 +138,57 @@ class Cell {
             return this.owner.color;
         if (this.color)
             return this.color;
-        return "gray";
+        return "#ddd";
     }
+}
+
+class Player {
+    constructor (name, color, startCell) {
+        this.name = name;
+        this.color = color;
+        this.cells = [];
+        if (startCell) {
+            this.addCell(startCell);
+            startCell.resource = 100;
+        }
+    }
+
+    addCell (cell) {
+        this.cells.push(cell);
+        cell.owner = this;
+    }
+}
+
+class Bot {
+    static makeTurn (player) {
+        const targets = new Set();
+        for (const cell of player.cells) {
+            cell.neighbors
+                .filter(n => n.owner !== player)
+                .forEach(target => {
+                    targets.add(target);
+                })
+        };
+        const target = randItem(Array.from(targets));
+        if (target) {
+            player.addCell(target);
+        }
+    }
+}
+
+const randItem = (list) => {
+    if (!list || list.length === 0) {
+        return null;
+    }
+    return list[randInt(list.length)];
+}
+
+const randInt = (min, max) => {
+    if (max === undefined) {
+        max = min;
+        min = 0;
+    }
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min)) + min;
 }
