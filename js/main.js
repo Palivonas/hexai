@@ -1,4 +1,5 @@
 const gameConfig = {
+    resourceGrowLimit: 100,
     mapRadius: 15,
     hexRadius: 16,
     spacing: 4,
