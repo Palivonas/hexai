@@ -215,7 +215,8 @@ class Player {
     constructor (name, color, startCell) {
         this.name = name;
         this.color = color;
-        this.cells = [];
+        this.cells = new Set();
+
         if (startCell) {
             this.addCell(startCell);
             startCell.resource = 100;
@@ -223,22 +224,27 @@ class Player {
     }
 
     addCell (cell) {
-        this.cells.push(cell);
+        if (cell.owner && cell.owner !== this) {
+            cell.owner.removeCell(cell);
+        }
+        this.cells.add(cell);
         cell.owner = this;
+    }
+
+    removeCell (cell) {
+        this.cells.delete(cell);
     }
 }
 
 class Bot {
     static getDecision (cells, player) {
         const targets = new Set();
-        for (const cell of cells) {
+        cells.forEach(cell => {
             cell.neighbors
-                .filter(n => n.owner !== player)
-                .forEach(target => {
-                    targets.add(target);
-                })
-        };
-        const withForeignNeighbors = cells.filter(cell =>
+                .filter(neighbor => neighbor.owner !== player)
+                .forEach(target => targets.add(target));
+        });
+        const withForeignNeighbors = Array.from(cells).filter(cell =>
             cell.neighbors.filter(neighbor => neighbor.owner !== player).length !== 0
         );
         const source = randItem(withForeignNeighbors);
