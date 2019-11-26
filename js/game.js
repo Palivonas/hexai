@@ -44,7 +44,7 @@ class Game {
             for (let direction = 0; direction < 6; ++direction) {
                 const location = this.hexLib.hex_neighbor(cell.location, direction);
                 if (this.cellsMap.has(location.q) && this.cellsMap.get(location.q).has(location.r)) {
-                    neighbors.push(this.cellsMap.get(location.q).get(location.r)); // TODO use this.getCell()
+                    neighbors.push(this.getCell(location.q, location.r));
                 }
             }
             cell.setNeighbors(neighbors);
@@ -252,9 +252,9 @@ class Bot {
         let resource = Math.min(target.resource + 1, source.resource - 1);
         resource = Math.max(0, resource);
         return {
-            source: source,
-            target: target,
-            resource: resource
+            source,
+            target,
+            resource
         };
     }
 }
